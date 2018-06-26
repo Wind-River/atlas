@@ -1,2 +1,2 @@
 # atlas
-SParts project network directory look up
+SParts project network directory look up server.
