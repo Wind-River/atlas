@@ -497,6 +497,19 @@ func AddLedgerNodeToDB(record LedgerNodeRecord) error {
 	return nil
 }
 
+/**********************
+// Ledger Node record
+type LedgerNode struct {
+	UUID         string `json:"uuid"`                  // UUID provide w/previous registration
+	Name         string `json:"name"`                  // Fullname
+	ShortId      string `json:"short_id"`              // 1-5 alphanumeric characters (unique)
+	API_Address  string `json:"api_address"`           // e.g., http://147.52.17.33:5000
+	Node_Address string `json:"node_address"`          // e.g, http://147.52.17.33:8080
+	Label        string `json:"label,omitempty"`       // 1-5 words display description
+	Status       string `json:"status,omitempty"`      // RUNNING, DOWN, NOT RESPONDING
+	Description  string `json:"description,omitempty"` // 2-3 sentence description
+}
+
 // Get ledger node record
 func GetLedgerNodesFromDB() []LedgerNode {
 
@@ -517,6 +530,7 @@ func GetLedgerNodesFromDB() []LedgerNode {
 	rows.Close() //good habit to close
 	return list
 }
+**********************/
 
 // Get most recently reported Ledger API network address
 func GetLedgerAPIAddress(ip_address *string, port *int) {
@@ -542,6 +556,36 @@ func UpdateLedgerAPIAddress(ip_address string, port int) {
 	stmt, err := theDB.Prepare("UPDATE SystemConfig SET  Ledger_IP_Addr=?, Ledger_Port=?  WHERE Config_Name=?")
 	checkErr(err)
 	_, err = stmt.Exec(ip_address, port, CONFIG_RECORD)
+}
+
+// Will delete ledger node with uuid. Return error otherwise.
+func DeleteLedgerNodeToDB(uuid string) error {
+	openDB()
+	defer theDB.Close()
+
+	// delete
+	stmt, err := theDB.Prepare("DELETE from LedgerNodes WHERE UUID=?")
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(uuid)
+	if err != nil {
+		return err
+	}
+
+	affect, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if _DEBUG_DISPLAY_ON {
+		fmt.Println("In DeleteLedgerNodeToDB:")
+		fmt.Println(affect)
+	}
+
+	theDB.Close()
+	return nil
 }
 
 // Add supplier record to the database

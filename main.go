@@ -26,14 +26,16 @@ const (
 )
 
 type Configuration struct {
+	ConfigReloadAllowed bool   `json:"config_reload_allowed"`
 	DatabaseFile        string `json:"database_file"`
-	HelpFile            string `json:"help_file"`
-	HttpPort            int    `json:"http_port"`
-	Ledger_API_Password string `json:"ledger_api_passwd"`
 	Debug_On            bool   `json:"debug_on"`
 	Debug_DB_On         bool   `json:"debug_db_on"`
+	HelpFile            string `json:"help_file"`
+	HttpPort            int    `json:"http_port"`
+	HttpsFullchainPEM   string `json:"https_fullchain_pem"`
+	HttpsPrivatePEM     string `json:"https_privkey_pem"`
+	Logging_On          bool   `json:"logging_on"`
 	Verbose_On          bool   `json:"verbose_on"`
-	ConfigReloadAllowed bool   `json:"config_reload_allowed"`
 }
 
 func GetConfigurationInfo(configuration *Configuration, first_time bool) (bool, error) {
@@ -69,12 +71,13 @@ func GetConfigurationInfo(configuration *Configuration, first_time bool) (bool, 
 		if MAIN_config.Verbose_On {
 			fmt.Println("Configuration:")
 			fmt.Println("-----------------------------------------------")
+			fmt.Println("debug on	  = ", configuration.Debug_On)
+			fmt.Println("debug db on	  = ", configuration.Debug_DB_On)
 			fmt.Println("db file	          = ", configuration.DatabaseFile)
 			fmt.Println("help file 	  = ", configuration.HelpFile)
 			fmt.Println("http port	  = ", configuration.HttpPort)
-			fmt.Println("ledger_api_passwd = ", configuration.Ledger_API_Password)
-			fmt.Println("debug on	  = ", configuration.Debug_On)
-			fmt.Println("debug db on	  = ", configuration.Debug_DB_On)
+			////fmt.Println("ledger_api_passwd = ", configuration.Ledger_API_Password)
+			fmt.Println("logging_on 	  = ", configuration.Logging_On)
 			fmt.Println("verbose on	  = ", configuration.Debug_DB_On)
 			fmt.Println("config  reload	  = ", configuration.ConfigReloadAllowed)
 		}

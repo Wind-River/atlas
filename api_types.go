@@ -49,8 +49,13 @@ type LedgerNodeRecord struct {
 	APIURL      string `json:"api_url"`               // e.g., http://147.52.17.33:5000
 	PublicKey   string `json:"public_key,omitempty"`  // Public key to verify authorization
 	Description string `json:"description,omitempty"` // 2-3 sentence description
-	Status      string `json:"status,omitempty"`
-	Timestamp   string `json:"timestamp,omitempty"`
+	Status      string `json:"status,omitempty"`      // Active/Inative status
+	Timestamp   string `json:"timestamp,omitempty"`   // Timestamp of last update in database
+}
+
+type LedgerNodeDeleteReq struct {
+	UUID        string `json:"uuid"`         // UUID
+	UUIDEncrypt string `json:"uuid_encrypt"` // UUID encypted with private key
 }
 
 type PublicKeyRecord struct {
