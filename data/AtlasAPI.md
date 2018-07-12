@@ -1,25 +1,29 @@
-# Sparts Atlas API
+# SParts Project Atlas Service API
 
 [TOC]
 
-## Overview
+## Atlas Service Overview
 
-Software Parts are used and tracked across many different supply chains. The SParts project wants to support the many different software supply chain networks. Today a Software Parts ledger could benefit  industries such as automotive, aerospace, medical devices, industrial manufacturing, consumer electronics. Even a given industry could be further divided into sub industries. For example, consumer products could be grouped in to TV & Video, Mobile, Photography and Home Office devices. Each ledger network is supported by multiple ledgers nodes. A system using a ledger can access and submit transactions to any ledger node within the network and be assured the transaction will be propagated to all other nodes within the network ledger. 
+The importance and dependency on software has grown exponentially across most industries over the past decade. Software solutions, whether it is an application, library, container or an entire Linux runtime are comprised of some percentage of open source software. The dependency on open source software has grown even faster over the past five year. And although the benefits of using open source are rapidly being realized, so are the complexities and costs associated with its use. Tracking which open source components were used in a solution, when and by whom across the software supply chain is vital to its continued success. 
 
-One challenge an application  utilizing the ledger faces is locating any of of the ledger nodes. The Atlas service (spartshub.org) serves as a ledger node lookup service. It enables different applications using a sparts ledger to located the API of one or more of the ledger nodes belong to for a specific industry network. Although there is no requirement  that each ledger node register their API address with the Atlas service, if it does, it becomes more easily discoverable. For example, if the automotive industry was using a ledger called: "automotive-soft-chain" which was supported by 30 ledger nodes (hosted by the respective  automotive companies and their suppliers) then each node would register their API address with the Atlas service each time it changes. 
+The SParts project provides a distributed ledger to facilitate the tracking of open source used in software solutions (parts) within various different industries such as automotive, aerospace, medical devices, industrial manufacturing, consumer electronics and the Internet of Things (IoT) more generally.  Each supply chain network maintains a ledger and each ledger is replicated across by multiple ledger **nodes**. An application utilizing  the ledger can access and submit transactions to any ledger node within a given network and be assured the transaction will be correctly propagated to all other network ledger nodes. 
 
-Each supply chain network is identified by an account name consisting of up to 50 alphanumeric letters and special characters, ''.", "_" and "-". Names are case-insensitive. For example, the Zephyr project uses the name "zephyr-parts-chain". All ledgers nodes that support the zephyr-parts-chain would be registered under the network name: zephyr-parts-chain.
+One challenge an application  that utilizes the ledger faces is locating a ledger node to transact with. The Atlas service (spartshub.org) serves as a ledger node lookup service. It enables different applications using a SParts ledger to located and obtain the API address of one or more of the ledger nodes belong to a specific industry supply chain network. Although there is no requirement  that each ledger node register their API address with the Atlas service, if it does, it becomes much easier to discover. For example, if the automotive industry was using a SParts ledger which was replicated across 30 different ledger nodes (hosted by the respective  automotive companies and their suppliers) then each node could register their API address with the Atlas service. Any application wanting to access the ledger can simply query the Altas service to obtain a list of available nodes to choose from.
+
+Each supply chain network is identified by an account name consisting of up to 50 alphanumeric letters and special characters, ''.", "_" and "-". Names are case-insensitive. For example, the Zephyr project uses the name "zephyr-parts-network". All ledgers nodes that support the zephyr-parts-chain would be registered under the network name: zephyr-parts-network.
+
+
 
 ## I)Atlas API Calls
 
-#### +Ping Request
+#### Ping Request
 
 ------
 
-Send request to see if the ledger is currently available.
+Send request to see if the Atlas service is currently available.
 
 ```
-GET /ledger/api/v1/ping
+GET /atlas/api/v1/ping
 ```
 
 Example of a successful response:
@@ -32,149 +36,40 @@ Example of a successful response:
 }
 ```
 
-Since there is not data to return the record type **EmptyRecord** is specified in the results field.  **EmptyRecord** is defined in part II. If the ledger is not available then no response will be received.
+Since there is not data to return the record type **EmptyRecord** is specified in the results field.  **EmptyRecord** is defined in part II of this document. If the ledger is not available then no response will be received.
 
+#### Ledger Node Registration
 
+------
 
-#### Ledger Registration
+This call is used to register a ledger node and its API address with the Atlas service.
 
-```
-GET /ledger/api/v1/artifacts/{uuid}
-```
-
-(This call use to be: /api/ledger/envelopes/{uuid})
-
-An artifact represents an item of evidence. Typically an artifact is a single document (e.g., notice file, source code archive, bill of materials). An envelope is a special instance of an artifact which represents a collection of artifacts potentially including  other envelopes. For single artifacts the artifact_list field will be empty. For an envelope it will contain a list of zero of more artifacts and the content_type field will be set to "envelope". The uri_list field is a list because copies of the artifact could exist in multiple locations.
-
-Response form:
-
-```
-{	status: 	"success",
-	message: 	"OK",
-	result_type: "ArtifactRecord",
-	result: 	{
-				name: "...",
-				uuid: "...",
-				filename: "...",
-				checksum: "...",
-				content_type: "...",  // envelope, notice, source, spdx, doc, other
-				alias: "...",
-				label: "...",
-				openchain: "...",
-				timestamp: "..."
-				artifact_list: [...]   /* used for envelopes but not for singular artifact */
-				uri_list: [ {
-                    			version: "...",
-							   alias: "...",
-							   checksum: "...",
-							   size:	"..."
-							   content_type: "...",  // http, ipfs, ...
-							   location: "https://...."
-						   }
-						 ]
-				}
-}
-```
-
-Example of a <u>single</u> artifact response:
-
-```
-{	status: 	"success",
-	message: 	"OK",
-	result_type: "ArtifactRecord",
-	result: {
-				name: "Zephyr 1.12 Notice File",
-				uuid: "26559ed4-6868-488d-a5a7-3e81714beb00",
-				filename: "Zephyr-1.12-Notices.txt",
-				checksum: "f855d41c49e80b9d6f2a13148e5eb838607e92f1",
-				content_type: "notices",
-				alias: "zephyr-notices-1.12",
-				label: "Zephyr Notices 1.12",
-				openchain: "True",
-				timestamp: "2018-06-18 00:30:12.498167"
-				artifact_list: []   /* not used for singular artifact */
-				uri_list: [ {
-                    			version: "1.0",
-							   alias: "zephyr-notices-1.12",
-							   checksum: "Zephyr Notices 1.12",
-							   size:	"235120"
-							   content_type: "http",
-							   location: "https://...."
-						   }
-						 ]
-}
-```
-
-Example of an <u>envelope</u> response:
-
-```
-{	status: 	"success",
-	message: 	"OK",
-	result_type: "ArtifactRecord",
-	result: {    name: "Zephyr 1.12 Envelope",
-				uuid: "9b602058-c73f-4f02-9237-b71a2760fc15",
-				filename: "Zephyr-1.12-envelope.zip",
-				checksum: "a1e2486417f4cd7fc670bf5facd5870af9c1e3a5",
-				content_type: "envelope",
-				alias: "zephyr-notices-1.12",
-				label: "Zephyr Notices 1.12",
-				openchain: "True",
-				timestamp: "2018-06-18 00:30:12.498167"
-				artifact_list: [
-                    		{ uuid: "731ef148-5f81-11e8-9c2d-fa7ae01bbebc",
-                               path: "/spdx"},
-						   { uuid: "f2cef148-5f81-11e8-8f51-fa7ae01bb93b",
-						     path: "/notices"}
-				] 
-				uri_list: [ {
-                    			version: "1.0",
-							   alias: "zephyr-envelope-1.12",
-							   checksum: "f67d3213907a52012a4367d8ad4f093b65abc016",
-							   size:	"235120"
-							   content_type: "http",
-							   location: "https://...."
-						   }
-						 ]
-}
-```
-
-Note that the envelope record utilizes the artifact_list field where a single artifact does not. 
-
-
-
-#### Artifact Add*
-
-```
-POST /ledger/api/v1/artifacts
-```
-
-Use the **ArtifactRecord** (the artifact_list  and uri_list fields are not used in this post). The request must be performed by a user with Roles: admin or supplier.
+Fill out and send a **LedgerNodeRecord** . You must include a public key which will be used to encrypt messages to verify authenticity.
 
 | Field                | Type   | Description                                                  |
 | -------------------- | ------ | ------------------------------------------------------------ |
-| uuid                 | string | unique identifier                                            |
+| uuid                 | string | unique identifier -                                          |
 | name                 | string | file or envelope name                                        |
-| alias (was short_id) | string | alias for typing                                             |
-| label                | string | // Display name                                              |
-| checksum             | string | artifact checksum                                            |
-| openchain            | string | true/false If prepared under an OpenChain comforting program |
-| content_type         | string | envelope, notices, spdx, source, ...                         |
+| network_name         | string | The name of the network the node belongs                     |
+| network_name_encrypt | string | network name encrypted (using the network's private key)     |
+| alias                | string | alias for typing                                             |
+| api_url              | string | api url address (e.g., 147.11.176.111:818)                   |
+| public_key           | string | public key to decrypt future ledger update requests          |
+| status               | string | is the server active or inactive. Ledger may update over time |
+|                      |        |                                                              |
 
 An example single artifact request:
 
 ```
 {
-   private_key: "5K9ft3F4CDHMdGbeUZSyt77b1TJavfR7CAEgDZ7nXbdno1aynbt",
-   public_key: "034408551a7b24b917103ccfafb402195713cd2e5dcdc588e7dc537f07b195bcf9",
-   artifact: {	
-   			  uuid: "7709ca8d-01f4-4de2-69ed-16b7ebae704a",
-    		  name: "Zephypr 1.12 SPDX file",
-			  alias: "zephypr_1.12",
+	uuid: "7709ca8d-01f4-4de2-69ed-16b7ebae704a",
+	name: "Zephypr 1.12 SPDX file",
+	network_name: "zephyr-parts-network",
+	alias: "zephypr_1.12",
 			  label: "Zephypr 1.12 SPDX file",
 			  checksum: "f855d41c49e80b9d6f2a13148e5eb838607e92f1",
 			  openchain: true,
 			  content_type: "spdx"
-		}
 }
 ```
 
@@ -730,38 +625,6 @@ Example Response:
 
 ## II) API Types
 
-#### ArtifactRecord
-
-```
-{ 
-	UUID         string         `json:"uuid"`
-    Name         string         `json:"name"`     
-	Alias        string         `json:"short_id,omitempty"` 
-	Label        string         `json:"label,omitempty"`  // Display name
-	Checksum     string         `json:"checksum"`             
-	OpenChain    string         `json:"openchain,omitempty"`  
-	ContentType  string         `json:"content_type,omitempty"`  
-	Timestamp    string         `json:"timestamp,omitempty"`     
-	ArtifactList ListOf.ArtifactItem `json:"artifact_list,omitempty"` 
-	URIList      ListOf.URIRecord    `json:"uri_list, omitempty"`     
-}
-
-
-```
-
-
-
-#### ArtifactItem
-
-```
-{
-	UUID string `json:"uuid"` // Artifact Universal Unique IDentifier
-	Path string `json:"path"` // Path of artifact within the envelope
-}
-```
-
-
-
 #### EmptyRecord
 
 ```
@@ -773,10 +636,6 @@ Example Response:
 ```
 
 ```
-
-
-
-
 
 
 
