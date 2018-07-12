@@ -73,7 +73,7 @@ func getType(object interface{}) string {
 	goType := strings.Replace(reflect.TypeOf(object).String(), "main.", "", 1)
 
 	if strings.Contains(goType, "[]") {
-		return strings.Replace(goType, "[]", "ListOf.", 1)
+		return strings.Replace(goType, "[]", "ListOf:", 1)
 	} else {
 		return goType
 	}
