@@ -521,9 +521,6 @@ func InitializeRestAPI() {
 
 	// General requests
 	router.HandleFunc("/atlas/api/v1/ping", GET_Ping_EndPoint).Methods("GET")
-	//router.HandleFunc("/api/sparts/reset", GET_Restore_EndPoint).Methods("GET")
-	//router.HandleFunc("/api/sparts/reset", POST_Restore_EndPoint).Methods("POST")
-	//router.HandleFunc("/api/sparts/db/reset", GET_DB_Reset_EndPoint).Methods("GET")
 	router.HandleFunc("/atlas/api/v1/config/reload", GET_ConfigReloadEndPoint).Methods("GET")
 	router.HandleFunc("/favicon.ico", GET_favicon_ico_EndPoint).Methods("GET")
 
@@ -533,81 +530,6 @@ func InitializeRestAPI() {
 
 func PostTestEndPoint(http_reply http.ResponseWriter, request *http.Request) {
 
-	/***
-		//vars := mux.Vars(request)
-		//networkName := vars["network_name"]
-		//ledgerList, err := GetLedgerNodeListDB(networkName)
-
-		if request.Body == nil {
-			http.Error(http_reply, "Please send a request body", 400)
-			return
-		}
-
-		// var record PartOfSupplierRecord
-		// var record PartOfSupplierRecord
-		var record ArtifactOfPart
-		err := json.NewDecoder(request.Body).Decode(&record)
-		if err != nil {
-			http.Error(http_reply, err.Error(), 400)
-			return
-		}
-		output, err := createJSONFormat(record)
-		fmt.Println(output)
-	***/
-
-	/***
-		bodyBytes, _ := ioutil.ReadAll(request.Body)
-		bodyString := string(bodyBytes)
-
-		fmt.Println("request.Body:", bodyString)
-	***/
-
-	/*****
-		var result map[string]interface{}
-		contents, err := ioutil.ReadAll(request.Body)
-
-		reqtype := result["ArtifactOfEnvelopeRecord"].(map[string]interface{})
-		for key, value := range reqtype {
-			switch key {
-			case "public_key":
-				fmt.Print
-			}
-		}
-		if reqtype == "ArtifactOfEnvelopeRecord" {
-			fmt.Println("ArtifactOfEnvelopeRecord")
-		} else {
-			fmt.Println("???")
-		}
-
-		var request1 RequestType
-		var record ArtifactOfEnvelopeRecord
-		err := json.NewDecoder(request.Body).Decode(&request1)
-		if err != nil {
-			http.Error(http_reply, err.Error(), 400)
-			return
-		}
-		if request1.requestType == "ArtifactOfEnvelopeRecord" {
-			var result map[string]interface{}
-			json.Unmarshal([]byte(string(request1.args)), &js)
-			err = json.NewDecoder(request.Body).Decode(&record)
-			if err != nil {
-				http.Error(http_reply, err.Error(), 400)
-				return
-			}
-			output, err := createJSONFormat(record)
-			fmt.Println(output)
-		}
-	***/
-
-	/***
-	if err != nil {
-		// error occurred
-		httpReportErrorReply(http_reply, err.Error(), _EMPTY_RECORD)
-	} else {
-		// Success. Simply reply we were successful
-		httpReportSuccessReply(http_reply, ledgerList)
-	}
-	****/
 }
 
 func GetTestEndPoint(http_reply http.ResponseWriter, request *http.Request) {
@@ -626,14 +548,12 @@ func RunWaitAndRespond(http_port int) {
 	// Create port string, e.g., for port 8080 we create ":8080" needed for ListenAndServe ()
 	port_str := ":" + strconv.Itoa(http_port)
 
-	// Check if https port is being used.
-	if port_str == "443" {
+	// Check if https port is being used and lauch web server.
+	fmt.Println("Listening on port", port_str, "...")
+	if port_str == ":443" {
 		log.Fatal(http.ListenAndServeTLS(port_str, MAIN_config.HttpsFullchainPEM, MAIN_config.HttpsPrivatePEM, router))
 	} else {
 		// for all other ports
 		log.Fatal(http.ListenAndServe(port_str, router))
 	}
-
-	fmt.Println("Listening on port", port_str, "...")
-
 }
