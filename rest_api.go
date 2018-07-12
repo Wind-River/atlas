@@ -519,7 +519,7 @@ func InitializeRestAPI() {
 	router.HandleFunc("/atlas/api/v1/ledger_node/delete", POST_DeleteLedgerNodeEndPoint).Methods("POST")
 
 	router.HandleFunc("/atlas/api/v1/network_space", GET_NetworkSpacesEndPoint).Methods("GET")
-	router.HandleFunc("/atlas/api/v1/ledgerlist/{network_name}", GET_LedgerListEndPoint).Methods("GET")
+	router.HandleFunc("/atlas/api/v1/network_node_list/{network_name}", GET_LedgerListEndPoint).Methods("GET")
 
 	// General requests
 	router.HandleFunc("/atlas/api/v1/ping", GET_Ping_EndPoint).Methods("GET")
