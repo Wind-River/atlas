@@ -33,7 +33,7 @@ type Configuration struct {
 	HelpFile            string `json:"help_file"`
 	HttpPort            int    `json:"http_port"`
 	HttpsFullchainPEM   string `json:"https_fullchain_pem"`
-	HttpsPrivatePEM     string `json:"https_privkey_pem"`
+	HttpsPrivatePEM     string `json:"https_privatekey_pem"`
 	Logging_On          bool   `json:"logging_on"`
 	Verbose_On          bool   `json:"verbose_on"`
 }
@@ -111,10 +111,6 @@ func main() {
 	fmt.Println("Host IP:	=", http_ip_address)
 	fmt.Println("Host Port:	=", MAIN_config.HttpPort)
 	fmt.Println("Host PID:	=", host_pid)
-
-	// Initialize DB and RESTful API
-	//InitializeDB()
-	//InitializeRestAPI()
 
 	// Listen and responsed to requests.
 	RunWaitAndRespond(MAIN_config.HttpPort)

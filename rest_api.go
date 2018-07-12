@@ -87,6 +87,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 	//"net"
@@ -502,6 +503,7 @@ func InitializeRestAPI() {
 
 	// Get help
 	router.HandleFunc("/atlas/api/v1/help", GetHelpEndPoint).Methods("GET")
+	router.HandleFunc("/", GetHelpEndPoint).Methods("GET")
 
 	/*
 	   curl -i -H "Content-Type: application/json" -X POST -d '{"name":"zephyr", "api_address":"http://147.52.17.33:5000", "description":"The Zephyr supply chain network"}'  http://localhost:3075/atlas/api/v1/network_space/register
@@ -551,9 +553,31 @@ func RunWaitAndRespond(http_port int) {
 	// Check if https port is being used and lauch web server.
 	fmt.Println("Listening on port", port_str, "...")
 	if port_str == ":443" {
-		log.Fatal(http.ListenAndServeTLS(port_str, MAIN_config.HttpsFullchainPEM, MAIN_config.HttpsPrivatePEM, router))
-	} else {
-		// for all other ports
-		log.Fatal(http.ListenAndServe(port_str, router))
+		if _, err := os.Stat(MAIN_config.HttpsFullchainPEM); err != nil {
+			fmt.Printf("https cerficate file '%s' does not exist\n", MAIN_config.HttpsFullchainPEM)
+			log.Printf("https cerficate file '%s' does not exist\n", MAIN_config.HttpsFullchainPEM)
+			// terminate program.
+			os.Exit(0)
+		}
+
+		if _, err := os.Stat(MAIN_config.HttpsPrivatePEM); err != nil {
+			fmt.Printf("https cerficate file '%s' does not exist\n", MAIN_config.HttpsPrivatePEM)
+			log.Printf("https cerficate file '%s' does not exist\n", MAIN_config.HttpsPrivatePEM)
+			// terminate program.
+			os.Exit(0)
+		}
+		err := http.ListenAndServeTLS(port_str, MAIN_config.HttpsFullchainPEM, MAIN_config.HttpsPrivatePEM, router)
+		if err != nil {
+			fmt.Printf("Error - encountered problem starting web server on port %s\n", port_str)
+			log.Printf("Error - encountered problem starting web server on port %s\n", port_str)
+			os.Exit(0)
+		}
+	} else { // for all other ports
+		err := http.ListenAndServe(port_str, router)
+		if err != nil {
+			fmt.Printf("Error - encountered problem starting web server on port %s\n", port_str)
+			log.Printf("Error - encountered problem starting web server on port %s\n", port_str)
+			os.Exit(0)
+		}
 	}
 }

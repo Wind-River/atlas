@@ -4,9 +4,9 @@
     "debug_on":                 true,
     "debug_db_on":              true,
     "help_file":                "./data/AtlasAPI.md",
-    "http_port":                811,
+    "http_port":                443,
     "https_fullchain_pem":      "./data/https/fullchain.pem",
-    "https_privkey_pem":        "./data/https/privkey.pem",
+    "https_privatekey_pem":     "./data/https/privatekey.pem",
     "logging_on":               true,
     "verbose_on":               true
 }
