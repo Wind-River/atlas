@@ -559,7 +559,7 @@ func UpdateLedgerAPIAddress(ip_address string, port int) {
 }
 
 // Will delete ledger node with uuid. Return error otherwise.
-func DeleteLedgerNodeToDB(uuid string) error {
+func deleteLedgerNodeFromDB(uuid string) error {
 	openDB()
 	defer theDB.Close()
 
@@ -580,7 +580,37 @@ func DeleteLedgerNodeToDB(uuid string) error {
 	}
 
 	if _DEBUG_DISPLAY_ON {
-		fmt.Println("In DeleteLedgerNodeToDB:")
+		fmt.Println("In deleteLedgerNodeFromDB:")
+		fmt.Println(affect)
+	}
+
+	theDB.Close()
+	return nil
+}
+
+// Will delete network space. Return error otherwise.
+func deleteNetworkSpaceFromDB(name string) error {
+	openDB()
+	defer theDB.Close()
+
+	// delete
+	stmt, err := theDB.Prepare("DELETE from NetworkSpaceList WHERE Name=?")
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(name)
+	if err != nil {
+		return err
+	}
+
+	affect, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if _DEBUG_DISPLAY_ON {
+		fmt.Println("In deleteNetworkSpaceFromDB:")
 		fmt.Println(affect)
 	}
 

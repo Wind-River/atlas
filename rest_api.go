@@ -347,7 +347,39 @@ func POST_DeleteLedgerNodeEndPoint(http_reply http.ResponseWriter, request *http
 
 	//TODO: Check UUID == UUID_ENCRYPT
 
-	err = DeleteLedgerNodeToDB(record.UUID)
+	err = deleteLedgerNodeFromDB(record.UUID)
+	if err != nil {
+		// error occurred
+		httpReportErrorReply(http_reply, err.Error(), _EMPTY_RECORD)
+	} else {
+		// Success. Simply reply we were successful
+		httpReportSuccessReply(http_reply, _EMPTY_RECORD)
+	}
+}
+
+func POST_DeleteNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *http.Request) {
+	logEvent(request)
+	/****
+		TODO:
+		Add private key for network to add a node
+		Add private key for each node - such that
+	   		node sends network name encrypt w/network pri key to first register node (node get's from network)
+	   		node uuid encrypt w/node pri key to update
+	   		node uuid encrypt w/node pri key for node to delete itself
+			node uuid encrypt w/network pri key for network to delete one of its nodes
+		******/
+
+	var record NetworkSpaceDeleteReq
+
+	err := ReadPOSTRequest(http_reply, request, &record)
+	if err != nil {
+		http.Error(http_reply, err.Error(), 400)
+		return
+	}
+
+	//TODO: Check Name == Name_ENCRYPT
+
+	err = deleteNetworkSpaceFromDB(record.Name)
 	if err != nil {
 		// error occurred
 		httpReportErrorReply(http_reply, err.Error(), _EMPTY_RECORD)
@@ -506,20 +538,24 @@ func InitializeRestAPI() {
 	router.HandleFunc("/", GetHelpEndPoint).Methods("GET")
 
 	/*
-	   curl -i -H "Content-Type: application/json" -X POST -d '{"name":"zephyr", "api_address":"http://147.52.17.33:5000", "description":"The Zephyr supply chain network"}'  http://localhost:3075/atlas/api/v1/network_space/register
+	   curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network", "status":"Public/Active",  "public_key":"",  "description":"The Sparts Test network"}'  https://spartshub.org/atlas/api/v1/network_space/register
 	*/
 	router.HandleFunc("/atlas/api/v1/network_space/register", POST_RegisterNetworkSpaceEndPoint).Methods("POST")
 	/*
-		curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"WR Node", "UUID": "7709ca8d-01f4-4de2-69ed-16b7ebae704a", "network_name":"zephyr","api_url":"http://147.52.17.33:5000", "alias":"WR", "description":"The zzephyr supply chain network"}'  http://localhost:3075/atlas/api/v1/ledger_node/register
+		curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Test Node 1", "UUID": "4122ac8d-01f4-4de2-69ed-16b7ebae812c", "network_name":"zephyr-parts-network", "api_url":"http://35.166.246.146:818", "alias":"WR-Test-Node-1", "description":"The  zephyr supply chain network test node #1"}'  https://spartshub.org/atlas/api/v1/ledger_node/register
 	*/
 	router.HandleFunc("/atlas/api/v1/ledger_node/register", POST_RegisterLedgerNodeEndPoint).Methods("POST")
-	/***
-	  curl -i -H "Content-Type: application/json" -X POST -d  '{"uuid": "7709ca8d-01f4-4de2-69ed-16b7ebae704a", "uuid_encrypt":"xyzddkdkdkdkd"}'  http://localhost:3075/api/atlas/ledger_node/delete
-	  ***/
+	/*
+	  curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network-2", "name_encrypt":"" }'  http://localhost:811/atlas/api/v1/network_space/delete
+	*/
 	router.HandleFunc("/atlas/api/v1/ledger_node/delete", POST_DeleteLedgerNodeEndPoint).Methods("POST")
 
 	router.HandleFunc("/atlas/api/v1/network_space", GET_NetworkSpacesEndPoint).Methods("GET")
 	router.HandleFunc("/atlas/api/v1/network_node_list/{network_name}", GET_LedgerListEndPoint).Methods("GET")
+	/*
+		curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network", "name_encrypt":"" }'  https://spartshub.org/atlas/api/v1/network_space/delete
+	*/
+	router.HandleFunc("/atlas/api/v1/network_space/delete", POST_DeleteNetworkSpaceEndPoint).Methods("POST")
 
 	// General requests
 	router.HandleFunc("/atlas/api/v1/ping", GET_Ping_EndPoint).Methods("GET")

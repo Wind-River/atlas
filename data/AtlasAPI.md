@@ -14,8 +14,9 @@ Each supply chain network is identified by an account name consisting of up to 5
 
 ## Example Requests
 
-[List of Networks](https://spartshub.org/atlas/api/v1/network_space)
-[List of Ledger Nodes ](https://spartshub.org/atlas/api/v1/network_node_list/zephyr-parts-network)
+- [List of Networks](https://spartshub.org/atlas/api/v1/network_space)
+
+- [List of Ledger Nodes ](https://spartshub.org/atlas/api/v1/network_node_list/zephyr-parts-network)
 
 
 
@@ -47,41 +48,36 @@ Since there is not data to return the record type **EmptyRecord** is specified i
 
 ------
 
-This call is used to register a ledger node and its API address with the Atlas service.
+This call is used to register a ledger node and its API address for a existing network.
 
 Fill out and send a **LedgerNodeRecord** . You must include a public key which will be used to encrypt messages to verify authenticity.
 
-| Field                | Type   | Description                                                  |
-| -------------------- | ------ | ------------------------------------------------------------ |
-| uuid                 | string | unique identifier -                                          |
-| name                 | string | file or envelope name                                        |
-| network_name         | string | The name of the network the node belongs                     |
-| network_name_encrypt | string | network name encrypted (using the network's private key)     |
-| alias                | string | alias for typing                                             |
-| api_url              | string | api url address (e.g., 147.11.176.111:818)                   |
-| public_key           | string | public key to decrypt future ledger update requests          |
-| status               | string | is the server active or inactive. Ledger may update over time |
-|                      |        |                                                              |
+| Field        | Type   | Description                                |
+| ------------ | ------ | ------------------------------------------ |
+| uuid         | string | unique identifier -                        |
+| name         | string | file or envelope name                      |
+| network_name | string | The name of the network the node belongs   |
+| api_url      | string | api url address (e.g., 147.11.176.111:818) |
+| alias        | string | Alias (short name)                         |
+| description  | string | Description of node                        |
 
 An example single artifact request:
 
 ```
 {
-	uuid: "7709ca8d-01f4-4de2-69ed-16b7ebae704a",
-	name: "Zephypr 1.12 SPDX file",
-	network_name: "zephyr-parts-network",
-	alias: "zephypr_1.12",
-			  label: "Zephypr 1.12 SPDX file",
-			  checksum: "f855d41c49e80b9d6f2a13148e5eb838607e92f1",
-			  openchain: true,
-			  content_type: "spdx"
+	uuid: "4122ac8d-01f4-4de2-69ed-16b7ebae812c",
+	name: "Wind River Test Node 1",
+	network_name: "sparts-test-network",
+	api_url: "http://35.166.246.146:818",
+	alias: "test-node-1",
+	description: "The SParts project test node"
 }
 ```
 
 Example curl Request:
 
 ```
-curl -i -H "Content-Type: application/json" -X POST -d  '{"private_key": "5K92SiHianMJRtqRiMaQ6xwzuYz7xaFRa2C8ruBQT6edSBg87Kq", "public_key" : "02be88bd24003b714a731566e45d24bf68f89ede629ae6f0aa5ce33baddc2a0515", "artifact": {"uuid": "7709ca8d-01f4-4de2-69ed-16b7ebae705c","name": "Zephypr 1.12 SPDX file", "checksum": "f855d41c49e80b9d6f2a13148e5eb838607e92f1", "alias": "zephypr_1.12", "label": "Zephypr 1.12 SPDX file", "openchain": "true", "content_type": "spdx"} }' http://147.11.176.111:818/ledger/api/v1/artifacts
+curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Test Node 1", "UUID": "4122ac8d-01f4-4de2-69ed-16b7ebae812c", "network_name":"sparts-test-network", "api_url":"http://35.166.246.146:818", "alias":"WR-Test-Node-1", "description":"The SParts project test node"}'  https://spartshub.org/atlas/api/v1/ledger_node/register
 ```
 
 
@@ -89,57 +85,9 @@ curl -i -H "Content-Type: application/json" -X POST -d  '{"private_key": "5K92Si
 **Potential Errors**:
 
 - The requesting user does not have the appropriate access credentials to perform the add.
-- One or more of the required fields UUID, checksum are missing.
-- The UUID is not in a valid format. 
-
-
-
-#### Artifact URI Add*
-
-```
-POST /ledger/api/v1/artifacts/uri
-```
-
-The request must be performed by a user with Roles: Admin or Supplier.
-
-| Field        | Type   | Description                               |
-| ------------ | ------ | ----------------------------------------- |
-| version      | string | name of use                               |
-| checksum     | string | artifact checksum                         |
-| content_type | string | type (e.g., text, binary, archive, other) |
-| size         | int    | file size in bytes                        |
-| uri_type     | string | (e.g., http, ipfs, ...)                   |
-| location     | string | link, path                                |
-
-An example request:
-
-```
-{  private_key: "5K9ft3F4CDHMdGbeUZSyt77b1TJavfR7CAEgDZ7nXbdno1aynbt",
-   public_key: "034408551a7b24b917103ccfafb402195713cd2e5dcdc588e7dc537f07b195bcf9",
-   uuid: "bcb083a1-89c7-4bd2-a568-8450350e8195",
-   uri:  { version: "1.0",
-		   checksum: "f67d3213907a52012a4367d8ad4f093b65abc016",
-		   size:	"235120"
-		   content_type: ".pdf",
-		   uri_type: "http",
-		   location: 	  
-		      "https://github.com/zephyrstorage/_content/master/f67d3213907a52012a4367d8abc016"
-		}
-}
-```
-
-The uri field is of type **URIRecord**.
-
-Example curl request:
-
-```
-curl -i -H "Content-Type: application/json" -X POST -d  '{"private_key": "5K92SiHianMJRtqRiMaQ6xwzuYz7xaFRa2C8ruBQT6edSBg87Kq", "public_key" : "02be88bd24003b714a731566e45d24bf68f89ede629ae6f0aa5ce33baddc2a0515", 
-"uuid": "7709ca8d-01f4-4de2-69ed-16b7ebae705c", "uri": {"version": "1.0", "checksum": "f855d41c49e80b9d6f2a13148e5eb838607e92f1", "size": "235120", "content_type": ".pdf", "uri_type": "http", "location": "https://github.com/zephyrstorage/_content/master/f67d3213907a52012a4367d8abc016" } }' http://147.11.176.111:818/ledger/api/v1/artifacts/uri
-```
-
-
-
-
+- One or more of the required fields UUID, network_name, ... are missing.
+- The UUID is not in a valid format.
+- network does not exist. 
 
 
 
@@ -151,48 +99,20 @@ curl -i -H "Content-Type: application/json" -X POST -d  '{"private_key": "5K92Si
 { }
 ```
 
-
-
-
-
-#### SupplierRecord
+#### LedgerNodeRecord 
 
 ```
 {
-	UUID    string `json:"uuid"`               // UUID provide w/previous registration
-	Name    string `json:"name"`               // Fullname
-	Alias   string `json:"alias,omitempty"`    // 1-15 alphanumeric characters
-	Url     string `json:"url,omitempty"`      // 2-3 sentence description
-	Parts   ListOf.PartItemRecord
+	UUID        string `json:"uuid"`        // UUID
+	Name        string `json:"name"`        // Fullname
+	NetworkName string `json:"network_name"`// Network Space name
+	Alias       string `json:"alias"`       // 1-15 alphanumberic alias
+	APIURL      string `json:"api_url"`     // e.g., http://147.52.17.33:5000
+	PublicKey   string `json:"public_key"`  // Public key to verify authorization
+	Description string `json:"description"` // 2-3 sentence description
+	Status      string `json:"status"`      // Active/Inative status
+	Timestamp   string `json:"timestamp"`   // Timestamp of last update in database
 }
 ```
-
-
-
-#### PartItemRecord 
-
-```
-{
-	PartUUID string `json:"part_uuid"` // Part uuid
-}
-```
-
-
-
-#### PartRecord
-
-```
-{
-	Name        string `json:"name"`                  // Fullname
-	Version     string `json:"version,omitempty"`     // Version if exists.
-	Alias       string `json:"label,omitempty"`       // 1-15 alphanumeric characters
-	Licensing   string `json:"licensing,omitempty"`   // License expression
-	Description string `json:"description,omitempty"` // Part description (1-3 sentences)
-	Checksum    string `json:"checksum,omitempty"`    // License expression
-	UUID        string `json:"uuid"`                  // UUID provide w/previous registration
-	URIList     []URIRecord `json:"uri_list,omitempty"`     //
-}
-```
-
 
 

@@ -58,6 +58,11 @@ type LedgerNodeDeleteReq struct {
 	UUIDEncrypt string `json:"uuid_encrypt"` // UUID encypted with private key
 }
 
+type NetworkSpaceDeleteReq struct {
+	Name        string `json:"name"`         // UUID
+	NameEncrypt string `json:"name_encrypt"` // UUID encypted with private key
+}
+
 type PublicKeyRecord struct {
 	PublicKey string `json:"public_key"`
 }
