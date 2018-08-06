@@ -48,6 +48,14 @@ Since there is not data to return the record type **EmptyRecord** is specified i
 
 ------
 
+Post request to register a ledger node in a given network:
+
+```
+POST /atlas/api/v1/ledger_node/register
+```
+
+ 
+
 This call is used to register a ledger node and its API address for a existing network.
 
 Fill out and send a **LedgerNodeRecord** . You must include a public key which will be used to encrypt messages to verify authenticity.
@@ -88,6 +96,24 @@ curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Tes
 - One or more of the required fields UUID, network_name, ... are missing.
 - The UUID is not in a valid format.
 - network does not exist. 
+
+
+
+#### Ledger Node Registration
+
+------
+
+Post request to delete a ledger node from a given network:
+
+```
+POST /atlas/api/v1/ledger_node/delete
+```
+
+ Example curl Request:
+
+```
+curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network", "name_encrypt":"xyzddkdkdkdkd" }'  https://spartshub.org/atlas/api/v1/ledger_node/delete
+```
 
 
 
