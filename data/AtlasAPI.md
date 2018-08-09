@@ -14,9 +14,10 @@ Each supply chain network is identified by an account name consisting of up to 5
 
 ## Example Requests
 
+- [Ping Service](https://spartshub.org/atlas/api/v1/ping) 
 - [List of Networks](https://spartshub.org/atlas/api/v1/network_space)
-
 - [List of Ledger Nodes ](https://spartshub.org/atlas/api/v1/network_node_list/zephyr-parts-network)
+- [Get UUID](https://spartshub.org/atlas/api/v1/uuid)
 
 
 
@@ -43,6 +44,27 @@ Example of a successful response:
 ```
 
 Since there is not data to return the record type **EmptyRecord** is specified in the results field.  **EmptyRecord** is defined in part II of this document. If the ledger is not available then no response will be received.
+
+#### Get UUID
+
+------
+
+```
+GET /atlas/api/v1/uuid
+```
+
+Will return UUIDRecord
+
+```
+{
+	status: "success",
+	message: "Ok",
+	result_type: "UUIDRecord",
+	result: {
+		uuid: "8447e9a6-687c-45e9-44dd-66000e2a4aa3"
+	}
+}
+```
 
 #### Ledger Node Registration
 
@@ -99,7 +121,7 @@ curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Tes
 
 
 
-#### Ledger Node Registration
+#### Ledger Node Deletion
 
 ------
 
@@ -141,4 +163,13 @@ curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-net
 }
 ```
 
+
+
+#### UUIDRecord
+
+```
+{
+	UUID string `json:"uuid"`
+}
+```
 

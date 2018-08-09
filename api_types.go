@@ -66,3 +66,7 @@ type NetworkSpaceDeleteReq struct {
 type PublicKeyRecord struct {
 	PublicKey string `json:"public_key"`
 }
+
+type UUIDRecord struct {
+	UUID string `json:"uuid"`
+}

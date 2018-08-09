@@ -231,6 +231,19 @@ func GET_Ping_EndPoint(http_reply http.ResponseWriter, request *http.Request) {
 
 }
 
+func GET_UUIDEndPoint(http_reply http.ResponseWriter, request *http.Request) {
+	logEvent(request)
+	if MAIN_config.Verbose_On {
+		displayURLRequest(request)
+	}
+
+	var record UUIDRecord
+	record.UUID = GetUUID()
+
+	// reply success to indicate running.
+	httpReportSuccessReply(http_reply, record)
+}
+
 // Handle: POST atlas/api/v1.0/network_space/register
 func POST_RegisterNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *http.Request) {
 
@@ -538,6 +551,8 @@ func InitializeRestAPI() {
 	// Get help
 	router.HandleFunc("/atlas/api/v1/help", GetHelpEndPoint).Methods("GET")
 	router.HandleFunc("/", GetHelpEndPoint).Methods("GET")
+
+	router.HandleFunc("/atlas/api/v1/uuid", GET_UUIDEndPoint).Methods("GET")
 
 	/*
 	   curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network", "status":"Public/Active",  "public_key":"",  "description":"The Sparts Test network"}'  https://spartshub.org/atlas/api/v1/network_space/register
