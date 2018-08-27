@@ -35,10 +35,17 @@ const (
 
 type NetworkSpaceRecord struct {
 	Name        string `json:"name"`                  // Fullname
+	Password    string `json:"password"`              // system password
 	Description string `json:"description,omitempty"` // 2-3 sentence description
 	Status      string `json:"status,omitempty"`      // Network Status - e.g., Public/Active
-	PublicKey   string `json:"public_key,omitempty"`  // Public key to vertify authorization
 	Timestamp   string `json:"timestamp,omitempty"`
+	_PublicKey  string // Used internally to pass public key to the db
+	_PrivateKey string // Used internally to pass private key to the db
+}
+
+// Send back private key
+type PrivateKeyRecord struct {
+	PrivateKey string `json:"private_key"`
 }
 
 type LedgerNodeRecord struct {
@@ -47,26 +54,31 @@ type LedgerNodeRecord struct {
 	NetworkName string `json:"network_name"`          // Network Space name
 	Alias       string `json:"alias,omitempty"`       // 1-15 alphanumberic alias
 	APIURL      string `json:"api_url"`               // e.g., http://147.52.17.33:5000
-	PublicKey   string `json:"public_key,omitempty"`  // Public key to verify authorization
+	SignedUUID  string `json:"signed_uuid"`           // Public key to verify authorization
 	Description string `json:"description,omitempty"` // 2-3 sentence description
 	Status      string `json:"status,omitempty"`      // Active/Inative status
 	Timestamp   string `json:"timestamp,omitempty"`   // Timestamp of last update in database
+	_PublicKey  string
+	_PrivateKey string
 }
 
 type LedgerNodeDeleteReq struct {
-	UUID        string `json:"uuid"`         // UUID
-	UUIDEncrypt string `json:"uuid_encrypt"` // UUID encypted with private key
+	UUID       string `json:"uuid"`         // UUID
+	SignedUUID string `json:"uuid_encrypt"` // UUID encypted with private key
 }
 
 type NetworkSpaceDeleteReq struct {
-	Name        string `json:"name"`         // UUID
-	NameEncrypt string `json:"name_encrypt"` // UUID encypted with private key
+	NetworkName string `json:"name"`        // UUID
+	SignedName  string `json:"signed_name"` // Network name signed with private key
 }
 
+/***
 type PublicKeyRecord struct {
 	PublicKey string `json:"public_key"`
 }
+****/
 
 type UUIDRecord struct {
-	UUID string `json:"uuid"`
+	UUID  string `json:"uuid"`
+	Valid bool   `json:"valid"` // for testing isValidUUID funciton
 }

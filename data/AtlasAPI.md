@@ -21,6 +21,7 @@ Each supply chain network is identified by an account name consisting of up to 5
 
 
 
+
 ## I)Atlas API Calls
 
 #### Ping Request
@@ -53,7 +54,7 @@ Since there is not data to return the record type **EmptyRecord** is specified i
 GET /atlas/api/v1/uuid
 ```
 
-Will return UUIDRecord
+Will generate a new universally unique identifier returned via a UUIDRecord.
 
 ```
 {
@@ -82,32 +83,38 @@ This call is used to register a ledger node and its API address for a existing n
 
 Fill out and send a **LedgerNodeRecord** . You must include a public key which will be used to encrypt messages to verify authenticity.
 
-| Field        | Type   | Description                                |
-| ------------ | ------ | ------------------------------------------ |
-| uuid         | string | unique identifier -                        |
-| name         | string | file or envelope name                      |
-| network_name | string | The name of the network the node belongs   |
-| api_url      | string | api url address (e.g., 147.11.176.111:818) |
-| alias        | string | Alias (short name)                         |
-| description  | string | Description of node                        |
+*Required fields 
+
+| Field         | Type   | Description                                                  |
+| ------------- | ------ | ------------------------------------------------------------ |
+| *uuid         | string | - unique identifier                                          |
+| name          | string | - file or envelope name                                      |
+| *network_name | string | - The name of the network the node belongs                   |
+| *api_url      | string | - api url address (e.g., 147.11.176.111:818)                 |
+| signed_uuid   | string | - signed uuid string to verify it came from a network authorized ledger node. Each network has a designated private key to sign each uuid. |
+| alias         | string | - Alias (short name)                                         |
+| description   | string | - Description of node                                        |
 
 An example single artifact request:
 
 ```
 {
-	uuid: "4122ac8d-01f4-4de2-69ed-16b7ebae812c",
+	*uuid: "6221ac8d-01f4-4de2-69ed-16b7ebae8127",
 	name: "Wind River Test Node 1",
-	network_name: "sparts-test-network",
-	api_url: "http://35.166.246.146:818",
+	*network_name: "sparts-test-network",
+	*api_url: "http://35.166.246.146:818",
+	signed_uuid: 		"3045022100fb4d2233ef0d155ab57e197ee2bf3233b4bc13ddc071906d2e7733298322c8b1022036ceb0d1729cff8d2cb9470375735f35608781b60f31384aa23568e9a73eba42"
 	alias: "test-node-1",
 	description: "The SParts project test node"
 }
 ```
 
+
+
 Example curl Request:
 
 ```
-curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Test Node 1", "UUID": "4122ac8d-01f4-4de2-69ed-16b7ebae812c", "network_name":"sparts-test-network", "api_url":"http://35.166.246.146:818", "alias":"WR-Test-Node-1", "description":"The SParts project test node"}'  https://spartshub.org/atlas/api/v1/ledger_node/register
+curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Test Node 1", "UUID": "6221ac8d-01f4-4de2-69ed-16b7ebae8127", "network_name":"sparts-test-network", "api_url":"http://35.166.246.146:818", ", "signed_uuid":  "3045022100fb4d2233ef0d155ab57e197ee2bf3233b4bc13ddc071906d2e7733298322c8b1022036ceb0d1729cff8d2cb9470375735f35608781b60f31384aa23568e9a73eba42", "alias":"WR-Test-Node-1", "description":"The SParts project test node"}'  https://spartshub.org/atlas/api/v1/ledger_node/register
 ```
 
 
@@ -131,7 +138,19 @@ Post request to delete a ledger node from a given network:
 POST /atlas/api/v1/ledger_node/delete
 ```
 
- Example curl Request:
+ *Required fields 
+
+| Field         | Type   | Description                                                  |
+| ------------- | ------ | ------------------------------------------------------------ |
+| *uuid         | string | - unique identifier                                          |
+| name          | string | - file or envelope name                                      |
+| *network_name | string | - The name of the network the node belongs                   |
+| *api_url      | string | - api url address (e.g., 147.11.176.111:818)                 |
+| signed_uuid   | string | - signed uuid string to verify it came from a network authorized ledger node. Each network has a designated private key to sign each uuid. |
+| alias         | string | - Alias (short name)                                         |
+| description   | string | - Description of node                                        |
+
+Example curl request:
 
 ```
 curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network", "name_encrypt":"xyzddkdkdkdkd" }'  https://spartshub.org/atlas/api/v1/ledger_node/delete

@@ -45,6 +45,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -52,6 +53,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	//"os"
 	"strings"
 
@@ -89,16 +91,27 @@ func GetUUID() string {
 	return u4.String()
 }
 
-func ValidUUID(uuid string) bool {
-	// TODO: need to implement ValidUUID
-	// We check to see if the UUID is properly formatted.
-
-	// The only check currently have is the lenght
-	if len(uuid) == 36 {
-		return true
-	} else {
+func isValidUUID(uuid string) bool {
+	// Check the length
+	if len(uuid) != 36 {
 		return false
 	}
+
+	// check that all characters are either a-f, 0-9 or -
+	// e.g, 57c39479-870f-432c-552c-c69e7df4325b  ->  57c39479  870f  432c  552c  c69e7df4325b
+	r, err := regexp.Compile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+	if !r.MatchString(uuid) || err != nil {
+		return false
+	}
+	return true
+}
+
+func convertBytesToHexString(theBytes []byte) string {
+	return fmt.Sprintf("%x", theBytes)
+}
+
+func convertHexStringToBytes(hexString string) ([]byte, error) {
+	return hex.DecodeString(hexString)
 }
 
 //func getCryptoKeys() (thePrivateKey *rsa.PrivateKey, thePublicKey *rsa.PublicKey) {

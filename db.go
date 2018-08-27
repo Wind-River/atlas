@@ -152,6 +152,7 @@ func createDBTables() {
 		Description TEXT,
 		Status TEXT,
 		PublicKey TEXT,
+		PrivateKey TEXT,
 		InsertedDatetime DATETIME
 	);
 	`
@@ -246,6 +247,28 @@ func ApplicationExists(uuid string) bool {
 	}
 }
 
+func getNetworkPublicKeyFromDB(NetworkName string) (publicKey string, err error) {
+
+	openDB()
+	defer theDB.Close()
+	rows, err := theDB.Query("SELECT PublicKey FROM NetworkSpaceList WHERE Name=?", NetworkName)
+	if err != nil {
+		rows.Close()
+		return "", err
+	}
+
+	var publicKeyStr string
+	for rows.Next() {
+		err = rows.Scan(&publicKeyStr)
+		if err != nil {
+			rows.Close()
+			return "", err
+		}
+	}
+	rows.Close()
+	return publicKeyStr, err
+}
+
 // A boolean function that determines if a ledger node record with uuid exits in the db
 func LedgerNodeExists(uuid string) bool {
 
@@ -312,9 +335,10 @@ func GetNetworkSpaceIDFromDB(networkName string) (Id int, err error) {
 func AddNetworkSpaceToDB(record NetworkSpaceRecord) error {
 
 	// Check if network already exists
-	networkSpaceID, err := GetNetworkSpaceIDFromDB(record.Name)
+	networkName := strings.ToLower(record.Name)
+	networkSpaceID, err := GetNetworkSpaceIDFromDB(networkName)
 	if networkSpaceID > 0 {
-		return fmt.Errorf("Network '%s' already exists", record.Name)
+		return fmt.Errorf("Network '%s' already exists", networkName)
 	}
 	if err != nil {
 		return err
@@ -330,8 +354,9 @@ func AddNetworkSpaceToDB(record NetworkSpaceRecord) error {
 		Description,
 		Status,
 		PublicKey,
+		PrivateKey,
 		InsertedDatetime
-		) values(?, ?, ?, ?, CURRENT_TIMESTAMP)`
+		) values(?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
 	stmt, err := theDB.Prepare(sql_additem)
 	defer stmt.Close()
@@ -339,7 +364,7 @@ func AddNetworkSpaceToDB(record NetworkSpaceRecord) error {
 		return err
 	}
 
-	_, err = stmt.Exec(strings.ToLower(record.Name), record.Description, record.Status, record.PublicKey)
+	_, err = stmt.Exec(networkName, record.Description, record.Status, record._PublicKey, record._PrivateKey)
 	if err != nil {
 		return fmt.Errorf("error - inserting record for network: %s into db", record.Name)
 	}
@@ -363,28 +388,8 @@ func GetLedgerNodeListDB(networkName string) ([]LedgerNodeRecord, error) {
 	openDB()
 	defer theDB.Close()
 
-	/****
-	// Query for  network space id
-	rows, err := theDB.Query("SELECT Id FROM NetworkSpaceList WHERE Name=?", strings.ToLower(networkName))
-	checkErr(err)
-
-	// rows.Next () is a boolean that says whether a next record exists
-	// If there is a next record (i.e., at least one) then true else false
-	var networkSpaceID int
-	if rows.Next() {
-		err = rows.Scan(&networkSpaceID)
-		checkErr(err)
-		rows.Close()
-	} else {
-		// Network not found - error
-		// TODO: handle error better - tell client no supplier.
-		rows.Close()
-		return nil, fmt.Errorf("Network Name Space not found: %s", networkName)
-	}
-	******/
-
 	// The network exists, proceed.
-	fmt.Println("network id:", networkSpaceID)
+	//fmt.Println("network id:", networkSpaceID)
 	rows, err := theDB.Query("SELECT Name, Alias, UUID, Description, API_URL, Status, PublicKey, InsertedDatetime FROM LedgerNodes WHERE NetworkSpaceID=?", networkSpaceID)
 	if err != nil {
 		fmt.Println(err)
@@ -394,7 +399,7 @@ func GetLedgerNodeListDB(networkName string) ([]LedgerNodeRecord, error) {
 	// initialize the list to the empty list.
 	list = make([]LedgerNodeRecord, 0)
 	for rows.Next() {
-		err = rows.Scan(&record.Name, &record.Alias, &record.UUID, &record.Description, &record.APIURL, &record.Status, &record.PublicKey, &record.Timestamp)
+		err = rows.Scan(&record.Name, &record.Alias, &record.UUID, &record.Description, &record.APIURL, &record.Status, &record._PublicKey, &record.Timestamp)
 		if err != nil {
 			return nil, fmt.Errorf("error accessing ledger node records")
 		}
@@ -405,7 +410,6 @@ func GetLedgerNodeListDB(networkName string) ([]LedgerNodeRecord, error) {
 }
 
 func GetNetworkSpaceListDB() []NetworkSpaceRecord {
-
 	var list []NetworkSpaceRecord
 	var record NetworkSpaceRecord
 
@@ -425,11 +429,11 @@ func GetNetworkSpaceListDB() []NetworkSpaceRecord {
 
 // Insert Ledger node record into the DB
 func AddLedgerNodeToDB(record LedgerNodeRecord) error {
-
-	networkSpaceID, err := GetNetworkSpaceIDFromDB(record.NetworkName)
+	networkName := strings.ToLower(record.NetworkName)
+	networkSpaceID, err := GetNetworkSpaceIDFromDB(networkName)
 	if networkSpaceID == 0 {
 		// successful accessed db but network not found.
-		return fmt.Errorf("Network name space '%s' does not exist", record.NetworkName)
+		return fmt.Errorf("Network name space '%s' does not exist.", networkName)
 	}
 	if err != nil {
 		// error occurred accessing db
@@ -439,29 +443,6 @@ func AddLedgerNodeToDB(record LedgerNodeRecord) error {
 
 	openDB()
 	defer theDB.Close()
-
-	// TODO: Check Node UUID is properly formatted.
-
-	/****************************
-	// Query for  network space id
-	rows, err := theDB.Query("SELECT Id FROM NetworkSpaceList WHERE Name=?", strings.ToLower(node_record.NetworkName))
-	checkErr(err)
-
-	// rows.Next () is a boolean that says whether a next record exists
-	// If there is a next record (i.e., at least one) then true else false
-	var networkSpaceID int
-	if rows.Next() {
-		err = rows.Scan(&networkSpaceID)
-		checkErr(err)
-		rows.Close()
-	} else {
-		// Network not found - error
-		// TODO: handle error better - tell client no supplier.
-		fmt.Println("Network Space not found:", node_record.NetworkName)
-		rows.Close()
-		return err
-	}
-	*****************/
 
 	// TODO: ping node to obtain status
 
@@ -479,58 +460,24 @@ func AddLedgerNodeToDB(record LedgerNodeRecord) error {
 		Description,
 		Status,
 		PublicKey,
+		PrivateKey,
 		InsertedDatetime
-		) values(?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+		) values(?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
 	stmt, err := theDB.Prepare(sql_additem)
 	defer stmt.Close()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = stmt.Exec(networkSpaceID, record.UUID, record.Name, record.Alias, record.APIURL,
-		record.Description, record.Status, record.PublicKey)
+		record.Description, record.Status, record._PublicKey, record._PrivateKey)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil
 }
-
-/**********************
-// Ledger Node record
-type LedgerNode struct {
-	UUID         string `json:"uuid"`                  // UUID provide w/previous registration
-	Name         string `json:"name"`                  // Fullname
-	ShortId      string `json:"short_id"`              // 1-5 alphanumeric characters (unique)
-	API_Address  string `json:"api_address"`           // e.g., http://147.52.17.33:5000
-	Node_Address string `json:"node_address"`          // e.g, http://147.52.17.33:8080
-	Label        string `json:"label,omitempty"`       // 1-5 words display description
-	Status       string `json:"status,omitempty"`      // RUNNING, DOWN, NOT RESPONDING
-	Description  string `json:"description,omitempty"` // 2-3 sentence description
-}
-
-// Get ledger node record
-func GetLedgerNodesFromDB() []LedgerNode {
-
-	var list []LedgerNode
-	var node LedgerNode
-
-	openDB()
-	defer theDB.Close()
-	rows, err := theDB.Query("SELECT UUID, Name, Short_Id, API_URL, Label, Description FROM LedgerNodes")
-	checkErr(err)
-
-	for rows.Next() {
-		err = rows.Scan(&node.UUID, &node.Name, &node.ShortId, &node.API_Address,
-			&node.Label, &node.Description)
-		checkErr(err)
-		list = append(list, node)
-	}
-	rows.Close() //good habit to close
-	return list
-}
-**********************/
 
 // Get most recently reported Ledger API network address
 func GetLedgerAPIAddress(ip_address *string, port *int) {
@@ -618,6 +565,8 @@ func deleteNetworkSpaceFromDB(name string) error {
 	return nil
 }
 
+/************************************
+
 // Add supplier record to the database
 func AddSupplierToDB(s Supplier_struct) {
 
@@ -625,13 +574,13 @@ func AddSupplierToDB(s Supplier_struct) {
 	defer theDB.Close()
 	sql_additem := `
 	INSERT OR REPLACE INTO Suppliers (
-		UUID, 
-		Name, 
-		SKU_Symbol, 
-		Short_Id, 
-		Passwd, 
-		Type, 
-		Url, 
+		UUID,
+		Name,
+		SKU_Symbol,
+		Short_Id,
+		Passwd,
+		Type,
+		Url,
 		InsertedDatetime
 		) values(?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
@@ -680,3 +629,4 @@ func GetSupplier(db *sql.DB) []Supplier_struct {
 	}
 	return result
 }
+****************************************/

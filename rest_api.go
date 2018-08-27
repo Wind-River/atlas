@@ -82,22 +82,24 @@ Blackfriday is distributed under the Simplified BSD License:
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"regexp"
-	"strings"
-	//"net"
-	"net/http"
 	"strconv"
+	"strings"
 
-	"github.com/gorilla/mux" // BSD-3-Clause
-	"github.com/russross/blackfriday"
-	// BSD-2-Clause
+	"github.com/gorilla/mux"          // BSD-3-Clause
+	"github.com/russross/blackfriday" // BSD-2-Clause
 )
+
+const _META_PRIVATE_KEY = "5JrP7SpTXNXo2gLxVsjnyYzpthKAMckTFUqWC2dSccVXrsq8uXk"
+const _META_PUBLIC_KEY = "036fa32c07028380269ba672b97a4da78425cac489d5e88bc061e13dba9ffd9657"
 
 // File global state variables
 var theLedgerAddress string
@@ -194,6 +196,28 @@ func httpRequestNotFound(http_reply http.ResponseWriter, request *http.Request) 
 	httpReportErrorReply(http_reply, errMsg, _EMPTY_RECORD)
 }
 
+func ReadPOSTRequest(http_reply http.ResponseWriter, request *http.Request, record interface{}) error {
+
+	if MAIN_config.Verbose_On {
+		displayURLRequest(request)
+	} // display url data
+
+	logEvent(request)
+
+	if request.Body == nil {
+		/////http.Error(http_reply, "Please send a request body", 400)
+		return fmt.Errorf("Missing request body content")
+	}
+	err := json.NewDecoder(request.Body).Decode(&record)
+	if err != nil {
+		////http.Error(http_reply, err.Error(), 400)
+		return err
+	}
+
+	return nil
+
+}
+
 // ==============================================
 // ====   API Handler END POINTS routines	=====
 // ==============================================
@@ -228,8 +252,24 @@ func GET_Ping_EndPoint(http_reply http.ResponseWriter, request *http.Request) {
 	}
 	// reply success to indicate running.
 	httpReportSuccessReply(http_reply, _EMPTY_RECORD)
-
 }
+
+/**************
+router.HandleFunc("/atlas/api/v1/uuid/{uuidx}", GET_UUIDTestEndPoint).Methods("GET")
+func GET_UUIDTestEndPoint(http_reply http.ResponseWriter, request *http.Request) {
+
+	vars := mux.Vars(request)
+	uuid := vars["uuidx"]
+	var record UUIDRecord
+
+	record.UUID = uuid
+	record.Valid = isValidUUID(uuid)
+
+	// reply success to indicate running.
+	httpReportSuccessReply(http_reply, record)
+}
+
+********************************/
 
 func GET_UUIDEndPoint(http_reply http.ResponseWriter, request *http.Request) {
 	logEvent(request)
@@ -239,6 +279,7 @@ func GET_UUIDEndPoint(http_reply http.ResponseWriter, request *http.Request) {
 
 	var record UUIDRecord
 	record.UUID = GetUUID()
+	record.Valid = isValidUUID(record.UUID)
 
 	// reply success to indicate running.
 	httpReportSuccessReply(http_reply, record)
@@ -250,7 +291,7 @@ func POST_RegisterNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *
 	logEvent(request)
 
 	var networkSpace NetworkSpaceRecord
-	var reply PublicKeyRecord
+	var reply PrivateKeyRecord
 
 	err := ReadPOSTRequest(http_reply, request, &networkSpace)
 	if err != nil {
@@ -258,21 +299,22 @@ func POST_RegisterNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *
 		return
 	}
 
-	/******
-		if MAIN_config.Verbose_On {
-			displayURLRequest(request)
-		} // display url data
+	// First check the system password
+	signedNameAsBytes, err := hex.DecodeString(networkSpace.Password)
+	if len(networkSpace.Password) == 0 || err != nil {
+		// Could not Decode signed name (password) from string to bytes
+		message := fmt.Sprintf("Password not valid.")
+		httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+		return
+	}
 
-		if request.Body == nil {
-			http.Error(http_reply, "Please send a request body", 400)
-			return
-		}
-		err := json.NewDecoder(request.Body).Decode(&networkSpace)
-		if err != nil {
-			http.Error(http_reply, err.Error(), 400)
-			return
-		}
-	****/
+	// check signature
+	verified, err := verifySignedMessage(_META_PUBLIC_KEY, networkSpace.Name, signedNameAsBytes)
+	if err != nil || verified == false {
+		// signing verification is not valid
+		httpReportErrorReply(http_reply, "Password not valid", _EMPTY_RECORD)
+		return
+	}
 
 	fmt.Println("Network Name is: ", networkSpace.Name)
 	fmt.Println("Network Address is: ", networkSpace.Description)
@@ -291,7 +333,19 @@ func POST_RegisterNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *
 	}
 
 	// Name is properly formatted. Proceed by obtaining public key
-	networkSpace.PublicKey = GetUUID()
+	keys, err := newKeys()
+	if err != nil {
+		message := fmt.Sprintf("Can't create private key: %s", err.Error())
+		httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+		return
+	}
+	networkSpace._PublicKey = keys.PublicKeyStr
+	// TODO: Stop saving the private key in DB. Saved in early stage to help with testing
+	// and management.
+	networkSpace._PrivateKey = keys.PrivateKeyStr
+
+	// Send back the private key.
+	reply.PrivateKey = keys.PrivateKeyStr
 
 	err = AddNetworkSpaceToDB(networkSpace)
 	if err != nil {
@@ -305,31 +359,9 @@ func POST_RegisterNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *
 		httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
 	} else {
 		// Success.
-		reply.PublicKey = networkSpace.PublicKey
+		// private key was assigned to the reply above
 		httpReportSuccessReply(http_reply, reply)
 	}
-}
-
-func ReadPOSTRequest(http_reply http.ResponseWriter, request *http.Request, record interface{}) error {
-
-	if MAIN_config.Verbose_On {
-		displayURLRequest(request)
-	} // display url data
-
-	logEvent(request)
-
-	if request.Body == nil {
-		/////http.Error(http_reply, "Please send a request body", 400)
-		return fmt.Errorf("Missing request body content")
-	}
-	err := json.NewDecoder(request.Body).Decode(&record)
-	if err != nil {
-		////http.Error(http_reply, err.Error(), 400)
-		return err
-	}
-
-	return nil
-
 }
 
 func POST_DeleteLedgerNodeEndPoint(http_reply http.ResponseWriter, request *http.Request) {
@@ -352,7 +384,7 @@ func POST_DeleteLedgerNodeEndPoint(http_reply http.ResponseWriter, request *http
 		return
 	}
 
-	if !ValidUUID(record.UUID) {
+	if !isValidUUID(record.UUID) {
 		// error occurred - UUID not valid.
 		httpReportErrorReply(http_reply, "UUID does not have a valid syntax", _EMPTY_RECORD)
 		return
@@ -373,13 +405,6 @@ func POST_DeleteLedgerNodeEndPoint(http_reply http.ResponseWriter, request *http
 func POST_DeleteNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *http.Request) {
 	logEvent(request)
 
-	/****
-	TODO:
-	Delete all ledger nodes when deleting a network
-	Require public key encryptyed string to delete network
-
-	******/
-
 	var record NetworkSpaceDeleteReq
 
 	err := ReadPOSTRequest(http_reply, request, &record)
@@ -388,9 +413,80 @@ func POST_DeleteNetworkSpaceEndPoint(http_reply http.ResponseWriter, request *ht
 		return
 	}
 
-	//TODO: Check Name == Name_ENCRYPT
+	fmt.Println("The Record:", record)
 
-	err = deleteNetworkSpaceFromDB(record.Name)
+	// TODO: remove this condition once the ledgers nodes implement signing the private key
+	// ==============================================================================
+	//if len(record.SignedName) > 0 {
+
+	// convert signed uuid from string to bytes
+	signedNameAsBytes, err := hex.DecodeString(record.SignedName)
+	if err != nil {
+		// Could not Decode signed uuid from string to bytes
+		message := fmt.Sprintf("Could not decode signed uuid from string: %s", err.Error())
+		httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+		return
+	}
+
+	publicKeyStr, err := getNetworkPublicKeyFromDB(record.NetworkName)
+	if err != nil {
+		// could not obtain network's public key
+		message := fmt.Sprintf("Could not decode signed uuid from string: %s", err.Error())
+		httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+		return
+	}
+	// If public key does not exist we assume network does not exist in db
+	if len(publicKeyStr) == 0 {
+		message := fmt.Sprintf("Network space '%s' does not exist", record.NetworkName)
+		httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+		return
+	}
+
+	// check signature
+	verified, err := verifySignedMessage(publicKeyStr, record.NetworkName, signedNameAsBytes)
+	if err != nil || verified == false {
+		// signing verification is not valid
+		if MAIN_config.Verbose_On {
+			fmt.Println("Signed UUID Verification FAILED")
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+		}
+		message := fmt.Sprintf("Signed Name verification FAILED.")
+		if len(record.SignedName) == 0 {
+			message = message + " Signed Name parameter missing."
+		} else if err != nil {
+			message = message + " " + err.Error()
+		} else if verified == false {
+			message = message + " Signature cannot be veritfied signed by private key."
+		}
+		httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+		return
+	}
+	// If we get here we have successful verified the signature.
+	if MAIN_config.Verbose_On {
+		fmt.Println("Signed Name Verification Succeeded...")
+	}
+
+	//} // if len(record.SignedUUID) > 0 {
+	// We will remove this condition once ledger nodes successfully implement the signature
+	// ==============================================================================
+
+	// We have a properly signed network name. Proceed next to remove the
+	// Ledger noded registered with the network before removing the network itself
+	ledgerList, _ := GetLedgerNodeListDB(record.NetworkName)
+	// If it returns in err or empty we assume there are not ledger nodes.
+	for i := range ledgerList {
+		err = deleteLedgerNodeFromDB(ledgerList[i].UUID)
+		if err != nil {
+			// error occurred. Log info and skip
+			logEvent(fmt.Sprintf("Error - deleting node '%s': %s", ledgerList[i].UUID, err))
+			//httpReportErrorReply(http_reply, err.Error(), _EMPTY_RECORD)
+		}
+	}
+
+	// Now delete the Netwpork space
+	err = deleteNetworkSpaceFromDB(record.NetworkName)
 	if err != nil {
 		// error occurred
 		httpReportErrorReply(http_reply, err.Error(), _EMPTY_RECORD)
@@ -405,6 +501,12 @@ func POST_RegisterLedgerNodeEndPoint(http_reply http.ResponseWriter, request *ht
 
 	var record LedgerNodeRecord
 
+	err := ReadPOSTRequest(http_reply, request, &record)
+	if err != nil {
+		http.Error(http_reply, err.Error(), 400)
+		return
+	}
+
 	logEvent(request)
 
 	if MAIN_config.Verbose_On {
@@ -413,23 +515,66 @@ func POST_RegisterLedgerNodeEndPoint(http_reply http.ResponseWriter, request *ht
 		fmt.Println("Name is: ", record.Name)
 		fmt.Println("Networks is: ", record.NetworkName)
 		fmt.Printf("Address is: '%s'\n", record.APIURL)
+		fmt.Printf("Signed UUID is: '%s'\n", record.SignedUUID)
 	}
 
-	if request.Body == nil {
-		http.Error(http_reply, "Please send a request body", 400)
-		return
-	}
-	err := json.NewDecoder(request.Body).Decode(&record)
-	if err != nil {
-		http.Error(http_reply, err.Error(), 400)
-		return
-	}
-
-	if !ValidUUID(record.UUID) {
+	if !isValidUUID(record.UUID) {
 		// error occurred - UUID not valid.
 		httpReportErrorReply(http_reply, "UUID does not have a valid syntax", _EMPTY_RECORD)
 		return
 	}
+
+	// TODO: remove this condition once the ledgers nodes implement signing the private key
+	// ==============================================================================
+	if len(record.SignedUUID) > 0 {
+
+		// convert signed uuid from string to bytes
+		uuidSignedAsBytes, err := hex.DecodeString(record.SignedUUID)
+		if err != nil {
+			// Could not Decode signed uuid from string to bytes
+			message := fmt.Sprintf("Could not decode signed uuid from string: %s", err.Error())
+			httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+			return
+		}
+
+		publicKeyStr, err := getNetworkPublicKeyFromDB(record.NetworkName)
+		if err != nil {
+			// could not obtain network's public key
+			message := fmt.Sprintf("Could not decode signed uuid from string: %s", err.Error())
+			httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+			return
+		}
+		if len(publicKeyStr) == 0 {
+			message := fmt.Sprintf("Network space '%s' does not exist", record.NetworkName)
+			httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+			return
+		}
+
+		verified, err := verifySignedMessage(publicKeyStr, record.UUID, uuidSignedAsBytes)
+		if err != nil || verified == false {
+			if MAIN_config.Verbose_On {
+				fmt.Println("Signed UUID Verification FAILED")
+				if err != nil {
+					fmt.Println(err.Error())
+				}
+			}
+			message := fmt.Sprintf("Signed UUID verification FAILED.")
+			if len(record.SignedUUID) == 0 {
+				message = message + " Signed UUID parameter missing."
+			} else if err != nil {
+				message = message + " " + err.Error()
+			} else if verified == false {
+				message = message + " Signature does not match public key."
+			}
+			httpReportErrorReply(http_reply, message, _EMPTY_RECORD)
+			return
+		}
+		if MAIN_config.Verbose_On {
+			fmt.Println("Signed UUID Verification Succeed...")
+		}
+
+	} // if len(record.SignedUUID) > 0 {
+	// ==============================================================================
 
 	err = AddLedgerNodeToDB(record)
 	if err != nil {
@@ -453,16 +598,18 @@ func GET_NetworkSpacesEndPoint(http_reply http.ResponseWriter, request *http.Req
 
 	if networkList == nil {
 		// We have an empty list. Create an empty list
-		httpSendReply(http_reply, make([]NetworkSpaceRecord, 0))
+		//fmt.Println("Well .....")
+		httpReportSuccessReply(http_reply, make([]NetworkSpaceRecord, 0))
 	} else {
-		httpSendReply(http_reply, networkList)
+		httpReportSuccessReply(http_reply, networkList)
 	}
 }
 
 func GET_LedgerListEndPoint(http_reply http.ResponseWriter, request *http.Request) {
 
-	logEvent(request)
+	//var reply ReplyType
 
+	logEvent(request)
 	vars := mux.Vars(request)
 	networkName := vars["network_name"]
 	ledgerList, err := GetLedgerNodeListDB(networkName)
@@ -473,9 +620,14 @@ func GET_LedgerListEndPoint(http_reply http.ResponseWriter, request *http.Reques
 		// Success.
 		for i := range ledgerList {
 			ledgerList[i].NetworkName = networkName
-			fmt.Print("Yes", networkName)
+			//fmt.Print("Yes", networkName)
 		}
-		httpReportSuccessReply(http_reply, ledgerList)
+		if ledgerList == nil {
+			httpReportSuccessReply(http_reply, make([]LedgerNodeRecord, 0))
+		} else {
+			httpReportSuccessReply(http_reply, ledgerList)
+		}
+
 	}
 }
 
@@ -555,7 +707,7 @@ func InitializeRestAPI() {
 	router.HandleFunc("/atlas/api/v1/uuid", GET_UUIDEndPoint).Methods("GET")
 
 	/*
-	   curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network", "status":"Public/Active",  "public_key":"",  "description":"The Sparts Test network"}'  https://spartshub.org/atlas/api/v1/network_space/register
+	   curl -i -H "Content-Type: application/json" -X POST -d '{"name":"sparts-test-network", "status":"Public/Active",  "public_key":"",  "description":"The Sparts Test network"}'  http://localhost:811/atlas/api/v1/network_space/register
 	*/
 	router.HandleFunc("/atlas/api/v1/network_space/register", POST_RegisterNetworkSpaceEndPoint).Methods("POST")
 	router.HandleFunc("/atlas/api/v1/network_space", GET_NetworkSpacesEndPoint).Methods("GET")
@@ -567,6 +719,7 @@ func InitializeRestAPI() {
 
 	/*
 		curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Test Node 1", "UUID": "6221ac8d-01f4-4de2-69ed-16b7ebae8127", "network_name":"sparts-test-network", "api_url":"http://35.166.246.146:818", "alias":"WR-Test-Node-1", "description":"A SParts test network node #1"}'  https://spartshub.org/atlas/api/v1/ledger_node/register
+		curl -i -H "Content-Type: application/json" -X POST -d  '{"name":"Wind River Test Node 1", "UUID": "6221ac8d-01f4-4de2-69ed-16b7ebae8127", "network_name":"sparts-test-network-3", "api_url":"http://35.166.246.007:818", "alias":"WR-Test-Node-1", "signed_uuid":  "30440220115e2098957ec635cce636973d50bb29747ee5e97cd7bf7a1553451e5047814702200da130d72a27d1774c7b40ecfa4027deba7f32956258cec539bb6759e5e9e05f", "description":"A SParts test network node #1"}'  http://localhost:811/atlas/api/v1/ledger_node/register
 	*/
 	router.HandleFunc("/atlas/api/v1/ledger_node/register", POST_RegisterLedgerNodeEndPoint).Methods("POST")
 
@@ -580,12 +733,76 @@ func InitializeRestAPI() {
 	router.HandleFunc("/atlas/api/v1/config/reload", GET_ConfigReloadEndPoint).Methods("GET")
 	router.HandleFunc("/favicon.ico", GET_favicon_ico_EndPoint).Methods("GET")
 
+	router.HandleFunc("/atlas/api/v1/sinfo", _getSecureInfo).Methods("POST")
+	router.HandleFunc("/atlas/api/v1/test", PostTestEndPoint).Methods("GET")
+
 	// API call not supported
 	router.NotFoundHandler = http.HandlerFunc(httpRequestNotFound)
 }
 
-func PostTestEndPoint(http_reply http.ResponseWriter, request *http.Request) {
+type BeforeAfter struct {
+	Before string `json:"before"`
+	Signed string `json:"signed"`
+	After  string
+	Keys   WIFKeys
+}
 
+func PostTestEndPoint(http_reply http.ResponseWriter, request *http.Request) {
+	type ByteStrReply struct {
+		//StringAnswer string `json:"the_string"`
+		ByteAnswer string `json:"the_bytes"`
+		Verify     bool   `json:"verify"`
+		HexAnswer  string `json:"the_hex_str"`
+	}
+
+	var reply ByteStrReply
+
+	keys, err := newKeys()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	keys.PrivateKeyStr = "5JdktTxpvVnW3fwVgVPJpbZuyf4uTRSXgShymXPpCn8HzzAS44r"
+	keys.PublicKeyStr = "022e7f91218d910537a7137b5dc6a5c96103682b6a92ac857074ab6eda725d4fb9"
+	// signedUUIDAsHexString = "30440220115e2098957ec635cce636973d50bb29747ee5e97cd7bf7a1553451e5047814702200da130d72a27d1774c7b40ecfa4027deba7f32956258cec539bb6759e5e9e05f"
+	fmt.Printf("Private: %s\nPublic: %s\n", keys.PrivateKeyStr, keys.PublicKeyStr)
+
+	uuid := "6221ac8d-01f4-4de2-69ed-16b7ebae8127"
+	signedUUID, err := signMessage(keys.PrivateKeyStr, uuid)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//dst := make([]byte, hex.EncodedLen(len(uuidSigned)))
+	//hex.Encode(dst, uuidSigned)
+	reply.HexAnswer = fmt.Sprintf("%x", signedUUID)
+
+	//fmt.Printf("signed UUID as byte1: %x\n", uuidSigned)
+	//fmt.Printf("signed UUID HEX string: %s\n", reply.HexAnswer)
+
+	uuid2Signed, _ := hex.DecodeString(reply.HexAnswer)
+	//uuid2Signed, _ = hex.DecodeString("30440220115e2098957ec635cce636973d50bb29747ee5e97cd7bf7a1553451e5047814702200da130d72a27d1774c7b40ecfa4027deba7f32956258cec539bb6759e5e9e05f")
+	//fmt.Printf("signed UUID byte2 as hex: %x\n", uuid2Signed)
+
+	verify, err := verifySignedMessage(keys.PublicKeyStr, uuid, uuid2Signed)
+	if err != nil {
+		fmt.Println("Test failed")
+		reply.Verify = false
+		//return false
+	}
+	if verify {
+		fmt.Println("Test PASSED.")
+		//return true
+		reply.Verify = true
+	} else {
+		fmt.Println("Test FAILED.")
+		reply.Verify = false
+		//return false
+	}
+
+	httpReportSuccessReply(http_reply, reply)
 }
 
 func GetTestEndPoint(http_reply http.ResponseWriter, request *http.Request) {
@@ -593,9 +810,37 @@ func GetTestEndPoint(http_reply http.ResponseWriter, request *http.Request) {
 	if MAIN_config.Verbose_On {
 		displayURLRequest(request)
 	}
+
 	// reply success to indicate running.
 	httpReportSuccessReply(http_reply, _EMPTY_RECORD)
 
+}
+
+type SecureinfoRecord struct {
+	PrivateKey string `json:"private_key"`
+	PublicKey  string `json:"public_key"`
+	SecreteMsg string `json:"secrete_msg"`
+	SignedMsg  string `json:"signed_msg"`
+}
+
+func _getSecureInfo(http_reply http.ResponseWriter, request *http.Request) {
+	var record SecureinfoRecord
+
+	err := ReadPOSTRequest(http_reply, request, &record)
+	if err != nil {
+		http.Error(http_reply, err.Error(), 400)
+		return
+	}
+	var keys WIFKeys
+	keys.PrivateKeyStr = record.PrivateKey
+	keys.PublicKeyStr = record.PublicKey
+	signedUUID, err := signMessage(keys.PrivateKeyStr, record.SecreteMsg)
+	if err != nil {
+		httpReportErrorReply(http_reply, err.Error(), _EMPTY_RECORD)
+		return
+	}
+	record.SignedMsg = convertBytesToHexString(signedUUID)
+	httpReportSuccessReply(http_reply, record)
 }
 
 // Main wait, listen and response to API requests.
